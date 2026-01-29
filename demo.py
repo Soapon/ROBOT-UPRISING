@@ -1,5 +1,5 @@
+
 import arcade as a
-import Welcome as w
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
@@ -18,9 +18,25 @@ a.start_render()
 a.draw_circle_outline(SCREEN_WIDTH/2,SCREEN_HEIGHT/2,100,a.color.ALLOY_ORANGE)
 
 a.finish_render()"""
-app = w.Welcome(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_TITLE)
 
-app.on_draw()
+import arcade as a
+
+class Welcome(a.Window):
+    '''Main welcome window
+    '''
+
+    def __init__(self):
+        '''initialize new windows'''
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE) #calling parent class constructor
+
+        a.set_background_color(a.color.ORANGE_PEEL) #parent class constructor
+
+    def on_draw(self): #overriding the parent on_draw method
+        
+        a.draw_text("Welcome",self.width/2,self.height/2,a.color.BLACK)
+
+
+app = Welcome(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_TITLE)
 
 a.start_render()
 

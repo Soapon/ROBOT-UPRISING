@@ -1,5 +1,6 @@
-# Basic arcade program
+# Basic arcade program using objects
 # Displays a white window with a blue circle in the middle
+
 # Imports
 import arcade
 
@@ -9,22 +10,33 @@ SCREEN_HEIGHT = 800
 SCREEN_TITLE = "Welcome to Arcade"
 RADIUS = 150
 
-# Open the window
-arcade.open_window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+# Classes
+class Welcome(arcade.Window):
+    """Main welcome window
+    """
+    def __init__(self):
+        """Initialize the window
+        """
 
-# Set the background color
-arcade.set_background_color(arcade.color.WHITE)
+        # Call the parent class constructor
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
-# Clear the screen and start drawing
-arcade.start_render()
+        # Set the background window
+        arcade.set_background_color(arcade.color.WHITE)
 
-# Draw a blue circle
-arcade.draw_circle_filled(
-    SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, RADIUS, arcade.color.BLUE
-)
+    def on_draw(self):
+        """Called whenever you need to draw your window
+        """
 
-# Finish drawing
-arcade.finish_render()
+        # Clear the screen and start drawing
+        arcade.start_render()
 
-# Display everything
-arcade.run()
+        # Draw a blue circle
+        arcade.draw_circle_filled(
+            SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, RADIUS, arcade.color.BLUE
+        )
+
+# Main code entry point
+if __name__ == "__main__":
+    app = Welcome()
+    arcade.run()
