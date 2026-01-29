@@ -1,9 +1,5 @@
 # Basic arcade program
 # Displays a white window with a blue circle in the middle
-
-import sys
-sys.executable
-
 # Imports
 import arcade
 
