@@ -32,9 +32,11 @@ class Player(arcade.Sprite):
         # Load sprite
         try:
             self.texture = arcade.load_texture("Cyborg.png")
+            self.textures = [self.texture]
         except:
             # Create a simple colored sprite if image not found
-            self.texture = arcade.make_soft_square_texture(64, arcade.color.BLUE, 255, 255)
+            self.texture = arcade.make_soft_square_texture(64, arcade.color.BLUE, outer_alpha=255)
+            self.textures = [self.texture]
         
         self.center_x = PLAYER_X
         self.center_y = SCREEN_HEIGHT // 2
@@ -64,7 +66,8 @@ class Projectile(arcade.Sprite):
         super().__init__()
         
         # Create a yellow projectile
-        self.texture = arcade.make_soft_square_texture(20, arcade.color.YELLOW, 255, 255)
+        self.texture = arcade.make_soft_circle_texture(20, arcade.color.YELLOW, outer_alpha=255)
+        self.textures = [self.texture]
         
         self.center_x = x
         self.center_y = y
@@ -97,14 +100,16 @@ class Alien(arcade.Sprite):
         
         try:
             self.texture = arcade.load_texture(drone_images[image_key])
+            self.textures = [self.texture]
         except:
             # Fallback colored sprites
             if alien_type == 1:
-                self.texture = arcade.make_soft_circle_texture(48, arcade.color.GREEN, 255, 255)
+                self.texture = arcade.make_soft_circle_texture(48, arcade.color.GREEN, outer_alpha=255)
             elif alien_type == 2:
-                self.texture = arcade.make_soft_circle_texture(64, arcade.color.RED, 255, 255)
+                self.texture = arcade.make_soft_circle_texture(64, arcade.color.RED, outer_alpha=255)
             else:
-                self.texture = arcade.make_soft_circle_texture(96, arcade.color.PURPLE, 255, 255)
+                self.texture = arcade.make_soft_circle_texture(96, arcade.color.PURPLE, outer_alpha=255)
+            self.textures = [self.texture]
         
         # Type 1: Scout
         if alien_type == 1:
@@ -163,7 +168,8 @@ class Explosion(arcade.Sprite):
         self.max_frames = 12
         
         # Start with yellow explosion
-        self.texture = arcade.make_soft_circle_texture(size, arcade.color.YELLOW, 255, 255)
+        self.texture = arcade.make_soft_circle_texture(size, arcade.color.YELLOW, outer_alpha=255)
+        self.textures = [self.texture]
         
     def update(self):
         self.frame += 1
@@ -176,12 +182,16 @@ class Explosion(arcade.Sprite):
         progress = self.frame / self.max_frames
         radius = int(self.size * progress * 0.5)
         
+        if radius < 1:
+            radius = 1
+        
         if progress < 0.5:
             color = arcade.color.YELLOW
         else:
             color = arcade.color.RED
             
-        self.texture = arcade.make_soft_circle_texture(radius * 2, color, 255, 255)
+        self.texture = arcade.make_soft_circle_texture(radius * 2, color, outer_alpha=255)
+        self.textures = [self.texture]
 
 class AlienInvasionGame(arcade.Window):
     def __init__(self):
@@ -293,13 +303,13 @@ class AlienInvasionGame(arcade.Window):
         # Draw background
         if self.use_background:
             # Draw scrolling background
-            arcade.draw_lbwh_rectangle_filled(
+            arcade.draw_lrwh_rectangle_textured(
                 self.bg_x, 0,
                 self.background.width, SCREEN_HEIGHT,
                 self.background
             )
             # Draw second copy for seamless scrolling
-            arcade.draw_lbwh_rectangle_filled(
+            arcade.draw_lrwh_rectangle_textured(
                 self.bg_x + self.background.width, 0,
                 self.background.width, SCREEN_HEIGHT,
                 self.background
