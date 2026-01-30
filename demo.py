@@ -6,8 +6,8 @@ python -m arcade.examples.platform_tutorial.01_open_window
 import arcade
 
 # Constants
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
+WINDOW_WIDTH = 2400
+WINDOW_HEIGHT = 1300
 WINDOW_TITLE = "Robot Uprising"
 
 
