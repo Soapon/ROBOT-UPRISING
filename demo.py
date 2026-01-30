@@ -1,47 +1,54 @@
+"""
+Platformer Game
 
-import arcade as a
+python -m arcade.examples.platform_tutorial.01_open_window
+"""
+import arcade
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-SCREEN_TITLE = "Beep Boop Video Games"
-
-
-"""a.open_window(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_TITLE,True) #True makes it so that the game window is resizable
-
-#Leave space here to add things to the window
-a.set_background_color(a.color.ALICE_BLUE)
+# Constants
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
+WINDOW_TITLE = "Platformer"
 
 
-a.start_render()
-
-#using screen dimensions to define objects keeps window responsive
-a.draw_circle_outline(SCREEN_WIDTH/2,SCREEN_HEIGHT/2,100,a.color.ALLOY_ORANGE)
-
-a.finish_render()"""
-
-import arcade as a
-
-class Welcome(a.Window):
-    '''Main welcome window
-    '''
+class GameView(arcade.Window):
+    """
+    Main application class.
+    """
 
     def __init__(self):
-        '''initialize new windows'''
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE) #calling parent class constructor
 
-        a.set_background_color(a.color.ORANGE_PEEL) #parent class constructor
+        # Call the parent class to set up the window
+        super().__init__(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
 
-    def on_draw(self): #overriding the parent on_draw method
-        
-        a.draw_text("Welcome",self.width/2,self.height/2,a.color.BLACK)
+        self.background_color = arcade.csscolor.GOLD
+        self.player_texture = arcade.load_texture("Frendly_Drone.png")
+        #self.player_sprite_sheet = arcade.load_spritesheet(":resources:images/---", 64, 64, 4)
+        self.player_sprite = arcade.Sprite(self.player_texture)
+        self.player_sprite.center_x = WINDOW_WIDTH / 2
+        self.player_sprite.center_y = WINDOW_HEIGHT / 2
+    def setup(self):
+        """Set up the game here. Call this function to restart the game."""
+        pass
+
+    def on_draw(self):
+        """Render the screen."""
+
+        # The clear method should always be called at the start of on_draw.
+        # It clears the whole screen to whatever the background color is
+        # set to. This ensures that you have a clean slate for drawing each
+        # frame of the game.
+        self.clear()
+        arcade.draw_sprite(self.player_sprite)
+        # Code to draw other things will go here
 
 
-app = Welcome(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_TITLE)
+def main():
+    """Main function"""
+    window = GameView()
+    window.setup()
+    arcade.run()
 
-a.start_render()
 
-
-
-a.finish_render()
-
-a.run()
+if __name__ == "__main__":
+    main()
