@@ -8,7 +8,7 @@ import arcade
 # Constants
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
-WINDOW_TITLE = "Platformer"
+WINDOW_TITLE = "Robot Uprising"
 
 
 class GameView(arcade.Window):
@@ -22,7 +22,7 @@ class GameView(arcade.Window):
         super().__init__(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
 
         self.background_color = arcade.csscolor.GOLD
-        self.player_texture = arcade.load_texture("Frendly_Drone.png")
+        self.player_texture = arcade.load_texture("Friendly_Drone.png")
         #self.player_sprite_sheet = arcade.load_spritesheet(":resources:images/---", 64, 64, 4)
         self.player_sprite = arcade.Sprite(self.player_texture)
         self.player_sprite.center_x = WINDOW_WIDTH / 2
