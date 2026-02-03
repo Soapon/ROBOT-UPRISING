@@ -23,7 +23,7 @@ class Player:
     
     def __init__(self, image_path, x, y):
         self.player_texture = arcade.load_texture(image_path)
-        self.player_sprite = arcade.Sprite(self.player_texture, scale=1.0)
+        self.player_sprite = arcade.Sprite(self.player_texture, scale=1.6)
         self.player_sprite.center_x = x
         self.player_sprite.center_y = y
         self.change_y = 0
@@ -71,7 +71,7 @@ class GameWindow(arcade.Window):
         
         arcade.set_background_color(arcade.color.SKY_BLUE)
     
-        PLAYER_X = 2200
+        PLAYER_X = 1100
         PLAYER_INITIAL_Y = SCREEN_HEIGHT // 2
 
         """Set up the game"""
@@ -80,14 +80,11 @@ class GameWindow(arcade.Window):
         self.background_list = arcade.SpriteList()
         
         # Create player
-        self.player = Player("Friendly_Drone.png", 500, 550)
+        self.player = Player("Cyborg - Copy.png", PLAYER_X, PLAYER_INITIAL_Y)
         self.player_list.append(self.player.player_sprite)
-        #self.player_texture = arcade.load_texture("Friendly_Drone.png")
-        #self.player_sprite_sheet = arcade.load_spritesheet(":resources:images/---", 64, 64, 4)
-        #self.player_sprite = arcade.Sprite(self.player_texture)
-        #self.player_sprite.center_x = WINDOW_WIDTH / 2
-        #self.player_sprite.center_y = WINDOW_HEIGHT / 2
-        
+        self.friend = Player("Friendly_Drone.png", PLAYER_X, PLAYER_INITIAL_Y - 50)
+        self.player_list.append(self.friend.player_sprite)
+
         # Create two background sprites for seamless scrolling
         # First background starts at center of screen
 
@@ -120,23 +117,25 @@ class GameWindow(arcade.Window):
         for background in self.background_list:
             # When a background scrolls off the left side, move it to the right
             if background.right < 0:
-                background.left = SCREEN_WIDTH
+             # Position it immediately after the other background
+                if background == self.background1:
+                    background.left = self.background2.right
+                else:
+                    background.left = self.background1.right
         
         # Update player
         self.player.update()
+        self.friend.update()
     
-    def on_key_press(self, key, modifiers):
+    def on_key_release(self, key, modifiers):
         """Handle key presses"""
         if key == arcade.key.UP or key == arcade.key.W:
             self.player.change_y = PLAYER_MOVEMENT_SPEED
+            self.friend.change_y = PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.DOWN or key == arcade.key.S:
             self.player.change_y = -PLAYER_MOVEMENT_SPEED
+            self.friend.change_y = -PLAYER_MOVEMENT_SPEED
     
-    def on_key_release(self, key, modifiers):
-        """Handle key releases"""
-        if key in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
-            self.player.change_y = 0
-
 
 def main():
     """Main function"""
