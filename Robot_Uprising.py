@@ -10,7 +10,7 @@ SCREEN_TITLE = "ROBOT UPRISING"
 
 # Player constants
 PLAYER_MOVEMENT_SPEED = 5
-
+PLAYER_HORIZONTAL_SPEED = 5
 # Background scroll speed
 BACKGROUND_SCROLL_SPEED = 2
 
@@ -53,6 +53,7 @@ class Player:
             frame = sprite_image.crop((left, upper, right, lower))
             
             # Save to a temporary location and load as texture
+            #This is my current solution, not sure if there's a better way
             temp_path = f"temp_frame_{i}.png"
             frame.save(temp_path)
             texture = arcade.load_texture(temp_path)
@@ -74,6 +75,7 @@ class Player:
         
         # Movement
         self.change_y = 0
+        self.change_x = 0
     
     def start_attack(self):
         """Start the attack animation"""
@@ -86,12 +88,17 @@ class Player:
         """Update player position and animation"""
         # Update position
         self.player_sprite.center_y += self.change_y
+        self.player_sprite.center_x += self.change_x
         
         # Keep player within screen bounds
         if self.player_sprite.center_y < self.player_sprite.height // 2:
             self.player_sprite.center_y = self.player_sprite.height // 2
         elif self.player_sprite.center_y > SCREEN_HEIGHT - self.player_sprite.height // 2:
             self.player_sprite.center_y = SCREEN_HEIGHT - self.player_sprite.height // 2
+        if self.player_sprite.center_x < self.player_sprite.width // 2:
+            self.player_sprite.center_x = self.player_sprite.width // 2
+        elif self.player_sprite.center_x > SCREEN_WIDTH - self.player_sprite.width // 2:
+            self.player_sprite.center_x = SCREEN_WIDTH - self.player_sprite.width // 2
         
         # Update animation
         if self.is_attacking:
@@ -172,6 +179,8 @@ class GameWindow(arcade.Window):
         self.friend.player_sprite.center_x = PLAYER_X
         self.friend.player_sprite.center_y = PLAYER_INITIAL_Y - 50
         self.friend.change_y = 0
+        self.friend.change_x = 0
+
         # Add simple update method for friend
         self.friend.update = self._friend_update
         self.player_list.append(self.friend.player_sprite)
@@ -186,6 +195,7 @@ class GameWindow(arcade.Window):
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
         self.friend.player_sprite.center_y += self.friend.change_y
+        self.friend.player_sprite.center_x += self.friend.change_x
         
         if self.friend.player_sprite.center_y < self.friend.player_sprite.height // 2:
             self.friend.player_sprite.center_y = self.friend.player_sprite.height // 2
@@ -226,22 +236,30 @@ class GameWindow(arcade.Window):
     
     def on_key_press(self, key, modifiers):
         """Handle key presses"""
-    
-    def on_key_press(self, key, modifiers):
-        """Handle key presses"""
         if key == arcade.key.UP or key == arcade.key.W:
             self.player.change_y = PLAYER_MOVEMENT_SPEED
             self.friend.change_y = PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.DOWN or key == arcade.key.S:
             self.player.change_y = -PLAYER_MOVEMENT_SPEED
             self.friend.change_y = -PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.player.change_x = -PLAYER_HORIZONTAL_SPEED
+            self.friend.change_x = -PLAYER_HORIZONTAL_SPEED
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.player.change_x = PLAYER_HORIZONTAL_SPEED
+            self.friend.change_x = PLAYER_HORIZONTAL_SPEED
         elif key == arcade.key.SPACE:
             # Trigger attack animation
             self.player.start_attack()
+    
     def on_key_release(self, key, modifiers):
+        """Handle key releases"""
         if key in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
             self.player.change_y = 0
             self.friend.change_y = 0
+        elif key in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
+            self.player.change_x = 0
+            self.friend.change_x = 0
 
 def main():
     """Main function"""
