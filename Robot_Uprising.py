@@ -16,15 +16,21 @@ BACKGROUND_SCROLL_SPEED = 2
 
 PLAYER_X = 1100
 PLAYER_INITIAL_Y = SCREEN_HEIGHT // 2
-
+Bullet_speed = 26
 # Animation constants
 ATTACK_ANIMATION_SPEED = 0.05  # Time per frame in seconds
+from enum import Enum
 
+
+class GameState(Enum):
+    START_SCREEN = 1
+    PLAYING = 2
+    GAME_OVER = 3
 
 class Player:
     """Player class that manages the player sprite with animation"""
     
-    def __init__(self, sprite_sheet_path, x, y, frame_width, frame_height, num_frames):
+    def __init__(self, sprite_sheet_path, x, y, num_frames):
         """
         Initialize player with sprite sheet animation
         
@@ -43,6 +49,7 @@ class Player:
         sprite_image = Image.open(sprite_sheet_path)
         
         for i in range(num_frames):
+            '''
             # Calculate the position of each frame
             left = i * frame_width
             upper = 0
@@ -56,6 +63,8 @@ class Player:
             #This is my current solution, not sure if there's a better way
             temp_path = f"temp_frame_{i}.png"
             frame.save(temp_path)
+            '''
+            temp_path = f"CA_{i}.png"
             texture = arcade.load_texture(temp_path)
             self.textures.append(texture)
         
@@ -91,8 +100,8 @@ class Player:
         self.player_sprite.center_x += self.change_x
         
         # Keep player within screen bounds
-        if self.player_sprite.center_y < self.player_sprite.height // 2:
-            self.player_sprite.center_y = self.player_sprite.height // 2
+        if self.player_sprite.center_y < self.player_sprite.height // 2 + 50:
+            self.player_sprite.center_y = self.player_sprite.height // 2 + 50
         elif self.player_sprite.center_y > SCREEN_HEIGHT - self.player_sprite.height // 2:
             self.player_sprite.center_y = SCREEN_HEIGHT - self.player_sprite.height // 2
         if self.player_sprite.center_x < self.player_sprite.width // 2:
@@ -121,6 +130,18 @@ class Player:
             # Return to idle (first frame)
             self.player_sprite.texture = self.textures[0]
 
+class Bullet(arcade.Sprite):
+    """Bullet sprite fired by the player"""
+    
+    def __init__(self, image_path, x, y, speed):
+        super().__init__(image_path)
+        self.center_x = x
+        self.center_y = y
+        self.speed = speed
+    
+    def update(self, delta_time=0):
+        """Move the bullet to the left (negative x direction)"""
+        self.center_x -= self.speed
 
 class Background(arcade.Sprite):
     """Scrolling background sprite"""
@@ -144,6 +165,7 @@ class GameWindow(arcade.Window):
         # Sprite lists
         self.player_list = None
         self.background_list = None
+        self.bullet_list = None
         
         # Player object
         self.player = None
@@ -158,6 +180,7 @@ class GameWindow(arcade.Window):
         # Create sprite lists
         self.player_list = arcade.SpriteList()
         self.background_list = arcade.SpriteList()
+        self.bullet_list = arcade.SpriteList()
         
         # Create player with sprite sheet animation
         # Adjust frame_width and frame_height based on your sprite sheet
@@ -166,8 +189,6 @@ class GameWindow(arcade.Window):
             "Cyborg_attack3.png",
             PLAYER_X,
             PLAYER_INITIAL_Y,
-            frame_width=48,  # Adjust this to match your sprite sheet frame width
-            frame_height=48,  # Adjust this to match your sprite sheet frame height
             num_frames=6
         )
         self.player_list.append(self.player.player_sprite)
@@ -195,12 +216,22 @@ class GameWindow(arcade.Window):
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
         self.friend.player_sprite.center_y += self.friend.change_y
-        self.friend.player_sprite.center_x += self.friend.change_x
+        self.friend.player_sprite.center_x = self.player.player_sprite.center_x
         
         if self.friend.player_sprite.center_y < self.friend.player_sprite.height // 2:
             self.friend.player_sprite.center_y = self.friend.player_sprite.height // 2
-        elif self.friend.player_sprite.center_y > SCREEN_HEIGHT - self.friend.player_sprite.height // 2:
-            self.friend.player_sprite.center_y = SCREEN_HEIGHT - self.friend.player_sprite.height // 2
+        elif self.friend.player_sprite.center_y > SCREEN_HEIGHT - self.friend.player_sprite.height // 2 - 50:
+            self.friend.player_sprite.center_y = SCREEN_HEIGHT - self.friend.player_sprite.height // 2 - 50
+    
+    def shoot_bullet(self):
+        """Create and fire a bullet from the player's position"""
+        bullet = Bullet(
+            "Bullet.png",
+            self.player.player_sprite.center_x,
+            self.player.player_sprite.center_y,
+            Bullet_speed
+        )
+        self.bullet_list.append(bullet)
     
     def setup(self):
         pass
@@ -212,6 +243,9 @@ class GameWindow(arcade.Window):
         # Draw backgrounds first (so they're behind the player)
         self.background_list.draw()
         
+        # Draw bullets
+        self.bullet_list.draw()
+        
         # Draw player
         self.player_list.draw()
     
@@ -219,6 +253,14 @@ class GameWindow(arcade.Window):
         """Update game logic"""
         # Update background
         self.background_list.update()
+        
+        # Update bullets
+        self.bullet_list.update()
+        
+        # Remove bullets that are off-screen
+        for bullet in self.bullet_list:
+            if bullet.center_x < -bullet.width:
+                bullet.remove_from_sprite_lists()
         
         # Reset background positions for infinite scrolling
         for background in self.background_list:
@@ -249,8 +291,9 @@ class GameWindow(arcade.Window):
             self.player.change_x = PLAYER_HORIZONTAL_SPEED
             self.friend.change_x = PLAYER_HORIZONTAL_SPEED
         elif key == arcade.key.SPACE:
-            # Trigger attack animation
+            # Trigger attack animation and shoot bullet
             self.player.start_attack()
+            self.shoot_bullet()
     
     def on_key_release(self, key, modifiers):
         """Handle key releases"""
