@@ -116,14 +116,14 @@ class Player:
 class Enemy:
     """Enemy drone class that randomly selects from available drone types"""
     
-    def __init__(self, x, y, speed=3):
+    def __init__(self, x, y, speed=1):
         """
         Initialize enemy drone
         """
-        # Randomly choose a drone type from 0 to 5
-        drone_number = random.randint(0, 5)
+        # Randomly choose a drone type from 1 to 5
+        drone_number = random.randint(1, 5)
         image_path = f"Enemy_Drone_{drone_number}.png"
-        
+
         # Create the sprite
         self.enemy_sprite = arcade.Sprite(image_path, scale=1.6)
         self.enemy_sprite.center_x = x
@@ -131,7 +131,7 @@ class Enemy:
         
         # Movement
         self.speed = speed
-        self.change_x = -speed  # Move left by default
+        self.change_x = speed
         self.change_y = 0
     
     def update(self, delta_time=0):
@@ -204,11 +204,15 @@ class GameWindow(arcade.Window):
     
     def setup(self):
         """Set up the game"""
+        # Unschedule any previous enemy spawning
+        arcade.unschedule(self.spawn_enemy)
+        
         # Create sprite lists
         self.player_list = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
-        
+        self.player_list = arcade.SpriteList()
+        self.enemy_objects = []
         # Reset score
         self.score = 0
         
@@ -233,6 +237,9 @@ class GameWindow(arcade.Window):
         # Add simple update method for friend
         self.friend.update = self._friend_update
         self.player_list.append(self.friend.player_sprite)
+        
+        # Schedule enemy spawning every 2 seconds
+        arcade.schedule(self.spawn_enemy, 2.0)
     
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
@@ -243,6 +250,18 @@ class GameWindow(arcade.Window):
             self.friend.player_sprite.center_y = self.friend.player_sprite.height // 2
         elif self.friend.player_sprite.center_y > SCREEN_HEIGHT - self.friend.player_sprite.height // 2 - 50:
             self.friend.player_sprite.center_y = SCREEN_HEIGHT - self.friend.player_sprite.height // 2 - 50
+    
+    def spawn_enemy(self, delta_time):
+        """Spawn a new enemy at a random height"""
+        if self.current_state == GameState.PLAYING:
+            # Generate random y position in increments of 20 from 50 to 670
+            possible_heights = list(range(50, 671, 20))
+            y_position = random.choice(possible_heights)
+        
+            # Create enemy at x = -30, moving right
+            enemy = Enemy(-30, y_position, speed=1)
+            self.enemy_list.append(enemy.enemy_sprite)  # Add sprite to sprite list
+            self.enemy_objects.append(enemy)  # Add Enemy object to tracking list
     
     def shoot_bullet(self):
         """Create and fire a bullet from the player's position"""
@@ -259,21 +278,11 @@ class GameWindow(arcade.Window):
         # Draw background
         self.background_list.draw()
         
-        # Draw title and instructions
-        arcade.draw_text(
-            "ROBOT UPRISING",
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT / 2 + 50,
-            arcade.color.WHITE,
-            font_size=50,
-            anchor_x="center",
-            bold=True
-        )
         #Draws the big start logo in the middle of the screen (only on the start screen)
         self.start_logo_texture = arcade.load_texture("START_LOGO.png")
         self.start_logo_sprite = arcade.Sprite(self.start_logo_texture)
         self.start_logo_sprite.center_x = SCREEN_WIDTH / 2
-        self.start_logo_sprite.center_y = SCREEN_HEIGHT / 2 - 50
+        self.start_logo_sprite.center_y = SCREEN_HEIGHT / 2 - 10
         arcade.draw_sprite(self.start_logo_sprite)
 
     def draw_game_over(self):
@@ -300,6 +309,7 @@ class GameWindow(arcade.Window):
             anchor_x="center",
             bold=True
         )
+
         arcade.draw_text(
             f"Final Score: {self.score}",
             SCREEN_WIDTH / 2,
@@ -308,6 +318,7 @@ class GameWindow(arcade.Window):
             font_size=30,
             anchor_x="center"
         )
+
         arcade.draw_text(
             "Press SPACE to Restart",
             SCREEN_WIDTH / 2,
@@ -316,6 +327,7 @@ class GameWindow(arcade.Window):
             font_size=25,
             anchor_x="center"
         )
+
 
     def on_draw(self):
         """Draw everything"""
@@ -337,6 +349,7 @@ class GameWindow(arcade.Window):
             # Draw player
             self.player_list.draw()
             
+
             # Draw score
             arcade.draw_text(
                 f"Score: {self.score}",
@@ -366,10 +379,10 @@ class GameWindow(arcade.Window):
                     else:
                         background.left = self.background1.right
         
+
         if self.current_state == GameState.PLAYING:
             # Update bullets
             self.bullet_list.update()
-            
             # Update enemies
             for enemy in self.enemy_list:
                 enemy.update(delta_time)
@@ -381,33 +394,43 @@ class GameWindow(arcade.Window):
             
             # Remove enemies that are off-screen
             for enemy in self.enemy_list:
-                if enemy.enemy_sprite.right < 0:
+                if enemy.enemy_sprite.right > SCREEN_WIDTH:
                     enemy.enemy_sprite.remove_from_sprite_lists()
                     self.enemy_list.remove(enemy)
             
+            # Update enemies
+            for enemy in self.enemy_objects:  # Changed from self.enemy_list
+                enemy.update(delta_time)
+
+            # Remove enemies that are off-screen
+            for enemy in self.enemy_objects[:]:  # Create a copy to iterate over
+                if enemy.enemy_sprite.right > SCREEN_WIDTH:  # Fixed the condition
+                    enemy.enemy_sprite.remove_from_sprite_lists()
+                    self.enemy_objects.remove(enemy)
             # Check for bullet-enemy collisions
             for bullet in self.bullet_list:
-                enemies_hit = arcade.check_for_collision_with_list(bullet, 
-                    arcade.SpriteList([enemy.enemy_sprite for enemy in self.enemy_list]))
-                
+                enemies_hit = arcade.check_for_collision_with_list(bullet, self.enemy_list)
+    
                 for enemy_sprite in enemies_hit:
                     # Remove the bullet
                     bullet.remove_from_sprite_lists()
-                    
+        
                     # Remove the enemy
-                    for enemy in self.enemy_list:
+                    for enemy in self.enemy_objects[:]:  # Changed
                         if enemy.enemy_sprite == enemy_sprite:
                             enemy.enemy_sprite.remove_from_sprite_lists()
-                            self.enemy_list.remove(enemy)
+                            self.enemy_objects.remove(enemy)  # Changed
                             self.score += 10
                             break
                     break
-            
-            # Check for player-enemy collisions
-            for enemy in self.enemy_list:
-                if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
-                    self.current_state = GameState.GAME_OVER
-            
+
+                # Check for player-enemy collisions
+                for enemy in self.enemy_objects:  # Changed
+                    if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
+                        self.current_state = GameState.GAME_OVER
+                        arcade.unschedule(self.spawn_enemy)
+
+
             # Update player with delta_time for animation
             self.player.update(delta_time)
             self.friend.update(delta_time)
