@@ -1,4 +1,3 @@
-
 # ROBOT UPRISING GAME
 # PEW PEW PEW
 # -Sophia Ren
@@ -112,7 +111,7 @@ class Player:
         else:
             # Return to idle (first frame)
             self.player_sprite.texture = self.textures[0]
-            
+
 class Enemy:
     """Enemy drone class that randomly selects from available drone types with animation"""
     
@@ -130,7 +129,23 @@ class Enemy:
         self.textures = []
         num_frames = 4
         
+        
         for i in range(num_frames):
+            sprite_image = Image.open(f"Enemy_Drone_{drone_number}.png")
+            frame_width = sprite_image.height
+            frame_height = sprite_image.height
+            left = i * frame_width
+            upper = 0
+            right = left + frame_width
+            lower = frame_height
+            
+            # Crop the frame from the sprite sheet
+            frame = sprite_image.crop((left, upper, right, lower))
+            
+            # Save to a temporary location and load as texture
+            #This is my current solution, not sure if there's a better way
+            temp_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
+            frame.save(temp_path)
             # Adjust the naming pattern to match your frame files
             # Example: "Enemy_Drone_1_frame_0.png", "Enemy_Drone_1_frame_1.png", etc.
             frame_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
@@ -142,7 +157,7 @@ class Enemy:
         self.enemy_sprite.texture = self.textures[0]
         self.enemy_sprite.center_x = x
         self.enemy_sprite.center_y = y
-        self.enemy_sprite.scale = 0.8
+        self.enemy_sprite.scale = 1.2
         
         # Movement
         self.speed = speed
@@ -222,6 +237,10 @@ class GameWindow(arcade.Window):
         # Score
         self.score = 0
         
+        # Bullet cooldown
+        self.bullet_cooldown = 0
+        self.bullet_cooldown_time = 0.4
+        
         arcade.set_background_color(arcade.color.SKY_BLUE)
         
         # Initialize backgrounds immediately so they show on start screen
@@ -245,6 +264,9 @@ class GameWindow(arcade.Window):
         # Reset score
         self.score = 0
         
+        # Reset bullet cooldown
+        self.bullet_cooldown = 0
+        
         # Create player with sprite sheet animation
         self.player = Player(
             "Cyborg_attack3.png",
@@ -267,8 +289,8 @@ class GameWindow(arcade.Window):
         self.friend.update = self._friend_update
         self.player_list.append(self.friend.player_sprite)
         
-        # Schedule enemy spawning every 2 seconds
-        arcade.schedule(self.spawn_enemy, 0.4)
+        # Schedule enemy spawning every 1 seconds
+        arcade.schedule(self.spawn_enemy, 1)
     
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
@@ -323,37 +345,24 @@ class GameWindow(arcade.Window):
         self.player_list.draw()
         
         # Draw semi-transparent overlay
-        arcade.draw_lrtb_rectangle_filled(
-            0, SCREEN_WIDTH, SCREEN_HEIGHT, 0,
+        arcade.draw_lbwh_rectangle_filled(
+            0, 0,
+            SCREEN_WIDTH, SCREEN_HEIGHT,
             (0, 0, 0, 150)  # Semi-transparent black
         )
-        
-        # Draw game over text
-        arcade.draw_text(
-            "GAME OVER",
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT / 2 + 50,
-            arcade.color.RED,
-            font_size=50,
-            anchor_x="center",
-            bold=True
-        )
+        #Draws the big end in the middle of the screen
+        self.end_screen_texture = arcade.load_texture("END_SCREEN.png")
+        self.end_screen_sprite = arcade.Sprite(self.end_screen_texture)
+        self.end_screen_sprite.center_x = SCREEN_WIDTH / 2
+        self.end_screen_sprite.center_y = SCREEN_HEIGHT / 2 - 10
+        arcade.draw_sprite(self.end_screen_sprite)
 
         arcade.draw_text(
-            f"Final Score: {self.score}",
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT / 2,
-            arcade.color.WHITE,
+            score_text := f"{self.score}",
+            SCREEN_WIDTH / 2 + 20,
+            SCREEN_HEIGHT / 2 - 55,
+            arcade.color.EARTH_YELLOW,
             font_size=30,
-            anchor_x="center"
-        )
-
-        arcade.draw_text(
-            "Press SPACE to Restart",
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT / 2 - 50,
-            arcade.color.WHITE,
-            font_size=25,
             anchor_x="center"
         )
 
@@ -410,6 +419,10 @@ class GameWindow(arcade.Window):
         
 
         if self.current_state == GameState.PLAYING:
+            # Update bullet cooldown
+            if self.bullet_cooldown > 0:
+                self.bullet_cooldown -= delta_time
+            
             # Update bullets
             self.bullet_list.update()
             # Update enemies
@@ -447,11 +460,12 @@ class GameWindow(arcade.Window):
                             break
                     break
 
-                # Check for player-enemy collisions
-                for enemy in self.enemy_objects:  # Changed
-                    if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
-                        self.current_state = GameState.GAME_OVER
-                        arcade.unschedule(self.spawn_enemy)
+            # Check for player-enemy collisions
+            for enemy in self.enemy_objects:  # Changed
+                if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
+                    self.current_state = GameState.GAME_OVER
+                    arcade.unschedule(self.spawn_enemy)
+                    break  # Exit loop after collision detected
 
 
             # Update player with delta_time for animation
@@ -479,9 +493,13 @@ class GameWindow(arcade.Window):
                 self.player.change_x = PLAYER_HORIZONTAL_SPEED
                 self.friend.change_x = PLAYER_HORIZONTAL_SPEED
             elif key == arcade.key.SPACE:
-                # Trigger attack animation and shoot bullet
-                self.player.start_attack()
-                self.shoot_bullet()
+                # Only shoot if cooldown has expired
+                if self.bullet_cooldown <= 0:
+                    # Trigger attack animation and shoot bullet
+                    self.player.start_attack()
+                    self.shoot_bullet()
+                    # Reset cooldown
+                    self.bullet_cooldown = self.bullet_cooldown_time
         
         elif self.current_state == GameState.GAME_OVER:
             if key == arcade.key.SPACE:
