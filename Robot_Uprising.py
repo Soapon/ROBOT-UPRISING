@@ -2,8 +2,9 @@
 # PEW PEW PEW
 # -Sophia Ren
 import arcade
+import random
 
-# Constants
+# Constants - This is the adjusted screen size from tutorial
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 SCREEN_TITLE = "ROBOT UPRISING"
@@ -19,14 +20,17 @@ PLAYER_INITIAL_Y = SCREEN_HEIGHT // 2
 Bullet_speed = 26
 # Animation constants
 ATTACK_ANIMATION_SPEED = 0.05  # Time per frame in seconds
+
+# Imported for GameState
 from enum import Enum
 
-
+# Game state enumeration for managing different screens
 class GameState(Enum):
     START_SCREEN = 1
     PLAYING = 2
     GAME_OVER = 3
 
+#Player setup class
 class Player:
     """Player class that manages the player sprite with animation"""
     
@@ -34,7 +38,7 @@ class Player:
         """
         Initialize player with sprite sheet animation
         """
-        # Load the full sprite sheet image
+        # Load the full sprite sheet image (I couldn't find a way in the documentation to automatically split sprite sheets)
         from PIL import Image
         
         # Extract individual frames from the sprite sheet manually
@@ -108,6 +112,34 @@ class Player:
             # Return to idle (first frame)
             self.player_sprite.texture = self.textures[0]
 
+
+class Enemy:
+    """Enemy drone class that randomly selects from available drone types"""
+    
+    def __init__(self, x, y, speed=3):
+        """
+        Initialize enemy drone
+        """
+        # Randomly choose a drone type from 0 to 5
+        drone_number = random.randint(0, 5)
+        image_path = f"Enemy_Drone_{drone_number}.png"
+        
+        # Create the sprite
+        self.enemy_sprite = arcade.Sprite(image_path, scale=1.6)
+        self.enemy_sprite.center_x = x
+        self.enemy_sprite.center_y = y
+        
+        # Movement
+        self.speed = speed
+        self.change_x = -speed  # Move left by default
+        self.change_y = 0
+    
+    def update(self, delta_time=0):
+        """Update enemy position"""
+        self.enemy_sprite.center_x += self.change_x
+        self.enemy_sprite.center_y += self.change_y
+
+
 class Bullet(arcade.Sprite):
     """Bullet sprite fired by the player"""
     
@@ -118,8 +150,9 @@ class Bullet(arcade.Sprite):
         self.speed = speed
     
     def update(self, delta_time=0):
-        """Move the bullet to the left"""
+        """Move the bullet to the left (negative x direction)"""
         self.center_x -= self.speed
+
 
 class Background(arcade.Sprite):
     """Scrolling background sprite"""
@@ -140,10 +173,14 @@ class GameWindow(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
         
+        # Game state
+        self.current_state = GameState.START_SCREEN
+        
         # Sprite lists
         self.player_list = None
-        self.background_list = None
+        self.background_list = Background("Background.png", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.bullet_list = None
+        self.enemy_list = None
         
         # Player object
         self.player = None
@@ -153,16 +190,23 @@ class GameWindow(arcade.Window):
         self.background1 = None
         self.background2 = None
         
-        arcade.set_background_color(arcade.color.SKY_BLUE)
+        # Score
+        self.score = 0
         
+        arcade.set_background_color(arcade.color.SKY_BLUE)
+    
+    def setup(self):
+        """Set up the game"""
         # Create sprite lists
         self.player_list = arcade.SpriteList()
         self.background_list = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
+        self.enemy_list = arcade.SpriteList()
         
-        #Create player with sprite sheet animation
-        # Adjust frame_width and frame_height based on your sprite sheet
-        #If your sprite sheet is 6 frames wide, divide total width by 6
+        # Reset score
+        self.score = 0
+        
+        # Create player with sprite sheet animation
         self.player = Player(
             "Cyborg_attack3.png",
             PLAYER_X,
@@ -211,75 +255,196 @@ class GameWindow(arcade.Window):
         )
         self.bullet_list.append(bullet)
     
-    def setup(self):
-        pass
+    def draw_start_screen(self):
+        """Draw the start screen"""
+        arcade.draw_text(
+            "ROBOT UPRISING",
+            SCREEN_WIDTH / 2,
+            SCREEN_HEIGHT / 2 + 50,
+            arcade.color.WHITE,
+            font_size=50,
+            anchor_x="center",
+            bold=True
+        )
+        arcade.draw_text(
+            "Press SPACE to Start",
+            SCREEN_WIDTH / 2,
+            SCREEN_HEIGHT / 2 - 30,
+            arcade.color.WHITE,
+            font_size=30,
+            anchor_x="center"
+        )
+        arcade.draw_text(
+            "Use WASD or Arrow Keys to Move | SPACE to Shoot",
+            SCREEN_WIDTH / 2,
+            SCREEN_HEIGHT / 2 - 80,
+            arcade.color.WHITE,
+            font_size=20,
+            anchor_x="center"
+        )
+    
+    def draw_game_over(self):
+        """Draw the game over screen"""
+        arcade.draw_text(
+            "GAME OVER",
+            SCREEN_WIDTH / 2,
+            SCREEN_HEIGHT / 2 + 50,
+            arcade.color.RED,
+            font_size=50,
+            anchor_x="center",
+            bold=True
+        )
+        arcade.draw_text(
+            f"Final Score: {self.score}",
+            SCREEN_WIDTH / 2,
+            SCREEN_HEIGHT / 2,
+            arcade.color.WHITE,
+            font_size=30,
+            anchor_x="center"
+        )
+        arcade.draw_text(
+            "Press SPACE to Restart",
+            SCREEN_WIDTH / 2,
+            SCREEN_HEIGHT / 2 - 50,
+            arcade.color.WHITE,
+            font_size=25,
+            anchor_x="center"
+        )
 
     def on_draw(self):
+        """Draw everything"""
         self.clear()
         
-        # Draw backgrounds first (so they're behind the player)
-        self.background_list.draw()
+        if self.current_state == GameState.START_SCREEN:
+            self.draw_start_screen()
         
-        # Draw bullets
-        self.bullet_list.draw()
+        elif self.current_state == GameState.PLAYING:
+            # Draw backgrounds first (so they're behind the player)
+            self.background_list.draw()
+            
+            # Draw enemies
+            self.enemy_list.draw()
+            
+            # Draw bullets
+            self.bullet_list.draw()
+            
+            # Draw player
+            self.player_list.draw()
+            
+            # Draw score
+            arcade.draw_text(
+                f"Score: {self.score}",
+                10,
+                SCREEN_HEIGHT - 30,
+                arcade.color.WHITE,
+                font_size=20,
+                bold=True
+            )
         
-        # Draw player
-        self.player_list.draw()
+        elif self.current_state == GameState.GAME_OVER:
+            self.draw_game_over()
     
     def on_update(self, delta_time):
         """Update game logic"""
-        # Update background
-        self.background_list.update()
-        
-        # Update bullets
-        self.bullet_list.update()
-        
-        # Remove bullets that are off-screen
-        for bullet in self.bullet_list:
-            if bullet.center_x < -bullet.width:
-                bullet.remove_from_sprite_lists()
-        
-        # Reset background positions for infinite scrolling
-        for background in self.background_list:
-            # When a background scrolls off the left side, move it to the right
-            if background.right < 0:
-                # Position it immediately after the other background
-                if background == self.background1:
-                    background.left = self.background2.right
-                else:
-                    background.left = self.background1.right
-        
-        # Update player with delta_time for animation
-        self.player.update(delta_time)
-        self.friend.update(delta_time)
+        if self.current_state == GameState.PLAYING:
+            # Update background
+            self.background_list.update()
+            
+            # Update bullets
+            self.bullet_list.update()
+            
+            # Update enemies
+            for enemy in self.enemy_list:
+                enemy.update(delta_time)
+            
+            # Remove bullets that are off-screen
+            for bullet in self.bullet_list:
+                if bullet.center_x < -bullet.width:
+                    bullet.remove_from_sprite_lists()
+            
+            # Remove enemies that are off-screen
+            for enemy in self.enemy_list:
+                if enemy.enemy_sprite.right < 0:
+                    enemy.enemy_sprite.remove_from_sprite_lists()
+                    self.enemy_list.remove(enemy)
+            
+            # Check for bullet-enemy collisions
+            for bullet in self.bullet_list:
+                enemies_hit = arcade.check_for_collision_with_list(bullet, 
+                    arcade.SpriteList([enemy.enemy_sprite for enemy in self.enemy_list]))
+                
+                for enemy_sprite in enemies_hit:
+                    # Remove the bullet
+                    bullet.remove_from_sprite_lists()
+                    
+                    # Remove the enemy
+                    for enemy in self.enemy_list:
+                        if enemy.enemy_sprite == enemy_sprite:
+                            enemy.enemy_sprite.remove_from_sprite_lists()
+                            self.enemy_list.remove(enemy)
+                            self.score += 10
+                            break
+                    break
+            
+            # Check for player-enemy collisions
+            for enemy in self.enemy_list:
+                if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
+                    self.current_state = GameState.GAME_OVER
+            
+            # Reset background positions for infinite scrolling
+            for background in self.background_list:
+                # When a background scrolls off the left side, move it to the right
+                if background.right < 0:
+                    # Position it immediately after the other background
+                    if background == self.background1:
+                        background.left = self.background2.right
+                    else:
+                        background.left = self.background1.right
+            
+            # Update player with delta_time for animation
+            self.player.update(delta_time)
+            self.friend.update(delta_time)
     
     def on_key_press(self, key, modifiers):
         """Handle key presses"""
-        if key == arcade.key.UP or key == arcade.key.W:
-            self.player.change_y = PLAYER_MOVEMENT_SPEED
-            self.friend.change_y = PLAYER_MOVEMENT_SPEED
-        elif key == arcade.key.DOWN or key == arcade.key.S:
-            self.player.change_y = -PLAYER_MOVEMENT_SPEED
-            self.friend.change_y = -PLAYER_MOVEMENT_SPEED
-        elif key == arcade.key.LEFT or key == arcade.key.A:
-            self.player.change_x = -PLAYER_HORIZONTAL_SPEED
-            self.friend.change_x = -PLAYER_HORIZONTAL_SPEED
-        elif key == arcade.key.RIGHT or key == arcade.key.D:
-            self.player.change_x = PLAYER_HORIZONTAL_SPEED
-            self.friend.change_x = PLAYER_HORIZONTAL_SPEED
-        elif key == arcade.key.SPACE:
-            # Trigger attack animation and shoot bullet
-            self.player.start_attack()
-            self.shoot_bullet()
-    #KEY HANDLINGGGGGG
+        if self.current_state == GameState.START_SCREEN:
+            if key == arcade.key.SPACE:
+                self.current_state = GameState.PLAYING
+                self.setup()
+        
+        elif self.current_state == GameState.PLAYING:
+            if key == arcade.key.UP or key == arcade.key.W:
+                self.player.change_y = PLAYER_MOVEMENT_SPEED
+                self.friend.change_y = PLAYER_MOVEMENT_SPEED
+            elif key == arcade.key.DOWN or key == arcade.key.S:
+                self.player.change_y = -PLAYER_MOVEMENT_SPEED
+                self.friend.change_y = -PLAYER_MOVEMENT_SPEED
+            elif key == arcade.key.LEFT or key == arcade.key.A:
+                self.player.change_x = -PLAYER_HORIZONTAL_SPEED
+                self.friend.change_x = -PLAYER_HORIZONTAL_SPEED
+            elif key == arcade.key.RIGHT or key == arcade.key.D:
+                self.player.change_x = PLAYER_HORIZONTAL_SPEED
+                self.friend.change_x = PLAYER_HORIZONTAL_SPEED
+            elif key == arcade.key.SPACE:
+                # Trigger attack animation and shoot bullet
+                self.player.start_attack()
+                self.shoot_bullet()
+        
+        elif self.current_state == GameState.GAME_OVER:
+            if key == arcade.key.SPACE:
+                self.current_state = GameState.PLAYING
+                self.setup()
+    
     def on_key_release(self, key, modifiers):
         """Handle key releases"""
-        if key in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
-            self.player.change_y = 0
-            self.friend.change_y = 0
-        elif key in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
-            self.player.change_x = 0
-            self.friend.change_x = 0
+        if self.current_state == GameState.PLAYING:
+            if key in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
+                self.player.change_y = 0
+                self.friend.change_y = 0
+            elif key in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
+                self.player.change_x = 0
+                self.friend.change_x = 0
+
 
 def main():
     """Main function"""
