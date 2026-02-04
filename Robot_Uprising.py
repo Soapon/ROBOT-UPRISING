@@ -388,6 +388,11 @@ class GameWindow(arcade.Window):
             # Draw backgrounds first (so they're behind the player)
             self.background_list.draw()
             
+            arcade.draw_lbwh_rectangle_filled(
+            1260, 0,
+            20, SCREEN_HEIGHT,
+            (255, 0, 0, 150)  # Semi-transparent red
+            )
             # Draw enemies
             self.enemy_list.draw()
             
@@ -410,32 +415,22 @@ class GameWindow(arcade.Window):
             
             # Draw health bar
             self.draw_health_bar()
-        
+            
         elif self.current_state == GameState.GAME_OVER:
             self.draw_game_over()
     
     def draw_health_bar(self):
         """Draw the health bar below the score"""
-        try:
-            # Load the appropriate health bar texture based on current health
-            heart_bar_texture = arcade.load_texture(f"HEART_BAR_{self.health}.png")
-            heart_bar_sprite = arcade.Sprite(heart_bar_texture, scale = 0.6)
+        # Load the appropriate health bar texture based on current health
+        heart_bar_texture = arcade.load_texture(f"HEART_BAR_{self.health}.png")
+        heart_bar_sprite = arcade.Sprite(heart_bar_texture, scale = 0.6)
             
-            # Position it below the score (adjust these values as needed)
-            heart_bar_sprite.left = 8  # I didn't want to show the text "Health: " so I just moved the health bar left to cover it up, this is a bit hacky but it works for now
-            heart_bar_sprite.bottom = SCREEN_HEIGHT - 70  # Below the score
+        # Position it below the score (adjust these values as needed)
+        heart_bar_sprite.left = 8
+        heart_bar_sprite.bottom = SCREEN_HEIGHT - 70  # Below the score
             
-            arcade.draw_sprite(heart_bar_sprite)
-        except FileNotFoundError:
-            # Fallback to text if image not found
-            arcade.draw_text(
-                f"Health: {self.health}",
-                10,
-                SCREEN_HEIGHT - 60,
-                arcade.color.WHITE,
-                font_size=20,
-                bold=True
-            )
+        arcade.draw_sprite(heart_bar_sprite)
+
     
     def on_update(self, delta_time):
         """Update game logic"""
