@@ -41,7 +41,7 @@ class Player:
         # Load the full sprite sheet image (I couldn't find a way in the documentation to automatically split sprite sheets)
         from PIL import Image
         
-        # Extract individual frames from the sprite sheet manually
+        #Extract individual frames from the sprite sheet manually
         self.textures = []
         sprite_image = Image.open(sprite_sheet_path)
         
@@ -69,7 +69,7 @@ class Player:
         self.change_x = 0
     
     def start_attack(self):
-        """Start the attack animation"""
+        """Start the attack animation, only start if not already attacking"""
         if not self.is_attacking:
             self.is_attacking = True
             self.current_frame = 0
@@ -178,7 +178,7 @@ class GameWindow(arcade.Window):
         
         # Sprite lists
         self.player_list = None
-        self.background_list = Background("Background.png", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        self.background_list = None
         self.bullet_list = None
         self.enemy_list = None
         
@@ -194,12 +194,18 @@ class GameWindow(arcade.Window):
         self.score = 0
         
         arcade.set_background_color(arcade.color.SKY_BLUE)
+        
+        # Initialize backgrounds immediately so they show on start screen
+        self.background_list = arcade.SpriteList()
+        self.background1 = Background("Background.png", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        self.background_list.append(self.background1)
+        self.background2 = Background("Background.png", SCREEN_WIDTH // 2 + SCREEN_WIDTH, SCREEN_HEIGHT // 2)
+        self.background_list.append(self.background2)
     
     def setup(self):
         """Set up the game"""
         # Create sprite lists
         self.player_list = arcade.SpriteList()
-        self.background_list = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
         
@@ -227,13 +233,6 @@ class GameWindow(arcade.Window):
         # Add simple update method for friend
         self.friend.update = self._friend_update
         self.player_list.append(self.friend.player_sprite)
-
-        # Create two background sprites for seamless scrolling
-        self.background1 = Background("Background.png", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        self.background_list.append(self.background1)
-        
-        self.background2 = Background("Background.png", SCREEN_WIDTH // 2 + SCREEN_WIDTH, SCREEN_HEIGHT // 2)
-        self.background_list.append(self.background2)
     
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
@@ -256,7 +255,11 @@ class GameWindow(arcade.Window):
         self.bullet_list.append(bullet)
     
     def draw_start_screen(self):
-        """Draw the start screen"""
+        """Draw the start screen with background"""
+        # Draw background
+        self.background_list.draw()
+        
+        # Draw title and instructions
         arcade.draw_text(
             "ROBOT UPRISING",
             SCREEN_WIDTH / 2,
@@ -266,25 +269,28 @@ class GameWindow(arcade.Window):
             anchor_x="center",
             bold=True
         )
-        arcade.draw_text(
-            "Press SPACE to Start",
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT / 2 - 30,
-            arcade.color.WHITE,
-            font_size=30,
-            anchor_x="center"
-        )
-        arcade.draw_text(
-            "Use WASD or Arrow Keys to Move | SPACE to Shoot",
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT / 2 - 80,
-            arcade.color.WHITE,
-            font_size=20,
-            anchor_x="center"
-        )
-    
+        #Draws the big start logo in the middle of the screen (only on the start screen)
+        self.start_logo_texture = arcade.load_texture("START_LOGO.png")
+        self.start_logo_sprite = arcade.Sprite(self.start_logo_texture)
+        self.start_logo_sprite.center_x = SCREEN_WIDTH / 2
+        self.start_logo_sprite.center_y = SCREEN_HEIGHT / 2 - 50
+        arcade.draw_sprite(self.start_logo_sprite)
+
     def draw_game_over(self):
-        """Draw the game over screen"""
+        """Draw the game over screen with frozen game state"""
+        # Draw the frozen game state
+        self.background_list.draw()
+        self.enemy_list.draw()
+        self.bullet_list.draw()
+        self.player_list.draw()
+        
+        # Draw semi-transparent overlay
+        arcade.draw_lrtb_rectangle_filled(
+            0, SCREEN_WIDTH, SCREEN_HEIGHT, 0,
+            (0, 0, 0, 150)  # Semi-transparent black
+        )
+        
+        # Draw game over text
         arcade.draw_text(
             "GAME OVER",
             SCREEN_WIDTH / 2,
@@ -346,10 +352,21 @@ class GameWindow(arcade.Window):
     
     def on_update(self, delta_time):
         """Update game logic"""
-        if self.current_state == GameState.PLAYING:
-            # Update background
+        # Update background scrolling on start screen and during gameplay
+        if self.current_state in [GameState.START_SCREEN, GameState.PLAYING]:
             self.background_list.update()
             
+            # Reset background positions for infinite scrolling
+            for background in self.background_list:
+                # When a background scrolls off the left side, move it to the right
+                if background.right < 0:
+                    # Position it immediately after the other background
+                    if background == self.background1:
+                        background.left = self.background2.right
+                    else:
+                        background.left = self.background1.right
+        
+        if self.current_state == GameState.PLAYING:
             # Update bullets
             self.bullet_list.update()
             
@@ -390,16 +407,6 @@ class GameWindow(arcade.Window):
             for enemy in self.enemy_list:
                 if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
                     self.current_state = GameState.GAME_OVER
-            
-            # Reset background positions for infinite scrolling
-            for background in self.background_list:
-                # When a background scrolls off the left side, move it to the right
-                if background.right < 0:
-                    # Position it immediately after the other background
-                    if background == self.background1:
-                        background.left = self.background2.right
-                    else:
-                        background.left = self.background1.right
             
             # Update player with delta_time for animation
             self.player.update(delta_time)
