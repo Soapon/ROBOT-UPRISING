@@ -21,6 +21,9 @@ Bullet_speed = 26
 # Animation constants
 ATTACK_ANIMATION_SPEED = 0.05  # Time per frame in seconds
 
+# Health constants
+PLAYER_MAX_HEALTH = 3
+
 # Imported for GameState
 from enum import Enum
 
@@ -125,7 +128,6 @@ class Enemy:
         drone_number = random.randint(1, 5)
         
         # Load animation frames for this enemy type
-        # Assuming you have 4 frames per enemy sprite sheet
         self.textures = []
         num_frames = 4
         
@@ -146,8 +148,6 @@ class Enemy:
             #This is my current solution, not sure if there's a better way
             temp_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
             frame.save(temp_path)
-            # Adjust the naming pattern to match your frame files
-            # Example: "Enemy_Drone_1_frame_0.png", "Enemy_Drone_1_frame_1.png", etc.
             frame_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
             texture = arcade.load_texture(frame_path)
             self.textures.append(texture)
@@ -237,6 +237,12 @@ class GameWindow(arcade.Window):
         # Score
         self.score = 0
         
+        # Health
+        self.health = PLAYER_MAX_HEALTH
+        
+        # Health bar texture
+        self.health_bar_texture = None
+        
         # Bullet cooldown
         self.bullet_cooldown = 0
         self.bullet_cooldown_time = 0.4
@@ -264,6 +270,9 @@ class GameWindow(arcade.Window):
         # Reset score
         self.score = 0
         
+        # Reset health
+        self.health = PLAYER_MAX_HEALTH
+        
         # Reset bullet cooldown
         self.bullet_cooldown = 0
         
@@ -290,7 +299,8 @@ class GameWindow(arcade.Window):
         self.player_list.append(self.friend.player_sprite)
         
         # Schedule enemy spawning every 1 seconds
-        arcade.schedule(self.spawn_enemy, 1)
+        spawn_cooldown = random.uniform(0.5, 1.5)  # Randomize spawn cooldown between 0.5 and 1.5 seconds
+        arcade.schedule(self.spawn_enemy, spawn_cooldown)
     
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
@@ -397,9 +407,35 @@ class GameWindow(arcade.Window):
                 font_size=20,
                 bold=True
             )
+            
+            # Draw health bar
+            self.draw_health_bar()
         
         elif self.current_state == GameState.GAME_OVER:
             self.draw_game_over()
+    
+    def draw_health_bar(self):
+        """Draw the health bar below the score"""
+        try:
+            # Load the appropriate health bar texture based on current health
+            heart_bar_texture = arcade.load_texture(f"HEART_BAR_{self.health}.png")
+            heart_bar_sprite = arcade.Sprite(heart_bar_texture, scale = 0.6)
+            
+            # Position it below the score (adjust these values as needed)
+            heart_bar_sprite.left = 8  # I didn't want to show the text "Health: " so I just moved the health bar left to cover it up, this is a bit hacky but it works for now
+            heart_bar_sprite.bottom = SCREEN_HEIGHT - 70  # Below the score
+            
+            arcade.draw_sprite(heart_bar_sprite)
+        except FileNotFoundError:
+            # Fallback to text if image not found
+            arcade.draw_text(
+                f"Health: {self.health}",
+                10,
+                SCREEN_HEIGHT - 60,
+                arcade.color.WHITE,
+                font_size=20,
+                bold=True
+            )
     
     def on_update(self, delta_time):
         """Update game logic"""
@@ -442,6 +478,7 @@ class GameWindow(arcade.Window):
             for enemy in self.enemy_objects[:]:  # Create a copy to iterate over
                 if enemy.enemy_sprite.right > SCREEN_WIDTH:  # Fixed the condition
                     enemy.enemy_sprite.remove_from_sprite_lists()
+                    self.health -= 1
                     self.enemy_objects.remove(enemy)
             # Check for bullet-enemy collisions
             for bullet in self.bullet_list:
@@ -463,8 +500,17 @@ class GameWindow(arcade.Window):
             # Check for player-enemy collisions
             for enemy in self.enemy_objects:  # Changed
                 if arcade.check_for_collision(self.player.player_sprite, enemy.enemy_sprite):
-                    self.current_state = GameState.GAME_OVER
-                    arcade.unschedule(self.spawn_enemy)
+                    # Reduce health instead of immediately ending game
+                    self.health -= 1
+                    
+                    # Remove the enemy that hit the player
+                    enemy.enemy_sprite.remove_from_sprite_lists()
+                    self.enemy_objects.remove(enemy)
+                    
+                    # Check if health reached zero
+                    if self.health <= 0:
+                        self.current_state = GameState.GAME_OVER
+                        arcade.unschedule(self.spawn_enemy)
                     break  # Exit loop after collision detected
 
 
