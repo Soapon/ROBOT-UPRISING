@@ -1,3 +1,4 @@
+
 # ROBOT UPRISING GAME
 # PEW PEW PEW
 # -Sophia Ren
@@ -111,34 +112,62 @@ class Player:
         else:
             # Return to idle (first frame)
             self.player_sprite.texture = self.textures[0]
-
-
+            
 class Enemy:
-    """Enemy drone class that randomly selects from available drone types"""
+    """Enemy drone class that randomly selects from available drone types with animation"""
     
     def __init__(self, x, y, speed=1):
         """
-        Initialize enemy drone
+        Initialize enemy drone with animation
         """
+        from PIL import Image
+        
         # Randomly choose a drone type from 1 to 5
         drone_number = random.randint(1, 5)
-        image_path = f"Enemy_Drone_{drone_number}.png"
-
-        # Create the sprite
-        self.enemy_sprite = arcade.Sprite(image_path, scale=1.6)
+        
+        # Load animation frames for this enemy type
+        # Assuming you have 4 frames per enemy sprite sheet
+        self.textures = []
+        num_frames = 4
+        
+        for i in range(num_frames):
+            # Adjust the naming pattern to match your frame files
+            # Example: "Enemy_Drone_1_frame_0.png", "Enemy_Drone_1_frame_1.png", etc.
+            frame_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
+            texture = arcade.load_texture(frame_path)
+            self.textures.append(texture)
+        
+        # Create the sprite with the first frame
+        self.enemy_sprite = arcade.Sprite()
+        self.enemy_sprite.texture = self.textures[0]
         self.enemy_sprite.center_x = x
         self.enemy_sprite.center_y = y
+        self.enemy_sprite.scale = 0.8
         
         # Movement
         self.speed = speed
         self.change_x = speed
         self.change_y = 0
+        
+        # Animation state
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.1  # Time per frame in seconds (adjust for faster/slower animation)
     
     def update(self, delta_time=0):
-        """Update enemy position"""
+        """Update enemy position and animation"""
+        # Update position
         self.enemy_sprite.center_x += self.change_x
         self.enemy_sprite.center_y += self.change_y
-
+        
+        # Update animation
+        self.animation_timer += delta_time
+        
+        # Check if it's time to advance to the next frame
+        if self.animation_timer >= self.animation_speed:
+            self.animation_timer = 0
+            self.current_frame = (self.current_frame + 1) % len(self.textures)
+            self.enemy_sprite.texture = self.textures[self.current_frame]
 
 class Bullet(arcade.Sprite):
     """Bullet sprite fired by the player"""
@@ -239,7 +268,7 @@ class GameWindow(arcade.Window):
         self.player_list.append(self.friend.player_sprite)
         
         # Schedule enemy spawning every 2 seconds
-        arcade.schedule(self.spawn_enemy, 2.0)
+        arcade.schedule(self.spawn_enemy, 0.4)
     
     def _friend_update(self, delta_time=0):
         """Simple update for friend drone"""
@@ -254,8 +283,8 @@ class GameWindow(arcade.Window):
     def spawn_enemy(self, delta_time):
         """Spawn a new enemy at a random height"""
         if self.current_state == GameState.PLAYING:
-            # Generate random y position in increments of 20 from 50 to 670
-            possible_heights = list(range(50, 671, 20))
+            # Generate random y position in increments of 30 from 100 to 670
+            possible_heights = list(range(100, 671, 30))
             y_position = random.choice(possible_heights)
         
             # Create enemy at x = -30, moving right
@@ -391,12 +420,6 @@ class GameWindow(arcade.Window):
             for bullet in self.bullet_list:
                 if bullet.center_x < -bullet.width:
                     bullet.remove_from_sprite_lists()
-            
-            # Remove enemies that are off-screen
-            for enemy in self.enemy_list:
-                if enemy.enemy_sprite.right > SCREEN_WIDTH:
-                    enemy.enemy_sprite.remove_from_sprite_lists()
-                    self.enemy_list.remove(enemy)
             
             # Update enemies
             for enemy in self.enemy_objects:  # Changed from self.enemy_list
