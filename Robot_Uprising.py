@@ -33,13 +33,6 @@ class Player:
     def __init__(self, sprite_sheet_path, x, y, num_frames):
         """
         Initialize player with sprite sheet animation
-        
-        Args:
-            sprite_sheet_path: Path to the sprite sheet image
-            x, y: Initial position
-            frame_width: Width of each frame in the sprite sheet
-            frame_height: Height of each frame in the sprite sheet
-            num_frames: Number of frames in the sprite sheet
         """
         # Load the full sprite sheet image
         from PIL import Image
@@ -49,21 +42,6 @@ class Player:
         sprite_image = Image.open(sprite_sheet_path)
         
         for i in range(num_frames):
-            '''
-            # Calculate the position of each frame
-            left = i * frame_width
-            upper = 0
-            right = left + frame_width
-            lower = frame_height
-            
-            # Crop the frame from the sprite sheet
-            frame = sprite_image.crop((left, upper, right, lower))
-            
-            # Save to a temporary location and load as texture
-            #This is my current solution, not sure if there's a better way
-            temp_path = f"temp_frame_{i}.png"
-            frame.save(temp_path)
-            '''
             temp_path = f"CA_{i}.png"
             texture = arcade.load_texture(temp_path)
             self.textures.append(texture)
@@ -140,7 +118,7 @@ class Bullet(arcade.Sprite):
         self.speed = speed
     
     def update(self, delta_time=0):
-        """Move the bullet to the left (negative x direction)"""
+        """Move the bullet to the left"""
         self.center_x -= self.speed
 
 class Background(arcade.Sprite):
@@ -182,9 +160,9 @@ class GameWindow(arcade.Window):
         self.background_list = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
         
-        # Create player with sprite sheet animation
+        #Create player with sprite sheet animation
         # Adjust frame_width and frame_height based on your sprite sheet
-        # If your sprite sheet is 6 frames wide, divide total width by 6
+        #If your sprite sheet is 6 frames wide, divide total width by 6
         self.player = Player(
             "Cyborg_attack3.png",
             PLAYER_X,
@@ -193,7 +171,7 @@ class GameWindow(arcade.Window):
         )
         self.player_list.append(self.player.player_sprite)
         
-        # Create friend drone (using original single image)
+        # Create friend drone that follows the player (at y - 50)
         self.friend = Player.__new__(Player)  # Create instance without __init__
         self.friend.player_texture = arcade.load_texture("Friendly_Drone.png")
         self.friend.player_sprite = arcade.Sprite(self.friend.player_texture, scale=1.6)
@@ -237,7 +215,6 @@ class GameWindow(arcade.Window):
         pass
 
     def on_draw(self):
-        """Render the screen"""
         self.clear()
         
         # Draw backgrounds first (so they're behind the player)
@@ -294,7 +271,7 @@ class GameWindow(arcade.Window):
             # Trigger attack animation and shoot bullet
             self.player.start_attack()
             self.shoot_bullet()
-    
+    #KEY HANDLINGGGGGG
     def on_key_release(self, key, modifiers):
         """Handle key releases"""
         if key in (arcade.key.UP, arcade.key.W, arcade.key.DOWN, arcade.key.S):
