@@ -10,21 +10,25 @@ SCREEN_TITLE = "ROBOT UPRISING"
 # Player constants
 PLAYER_MOVEMENT_SPEED = 5
 PLAYER_HORIZONTAL_SPEED = 5
+
 # Background scroll speed
 BACKGROUND_SCROLL_SPEED = 2
 PLAYER_X = 1100
 PLAYER_INITIAL_Y = SCREEN_HEIGHT // 2
 Bullet_speed = 26
+
 # Animation constants
 ATTACK_ANIMATION_SPEED = 0.05  # Time per frame in seconds
 JUMP_ANIMATION_SPEED = 0.03
 POWERUP_DURATION = 2.0  # How long the powerup lasts in seconds
 JUMPING_SPEED = 10
-HOLD_AT_POSITION_DURATION = 4.0  # How long to stay at top/bottom in seconds
+HOLD_AT_POSITION_DURATION = 3.5  # How long to stay at top/bottom in seconds
 POWERUP_ENEMY_DESTRUCTION_TIME = 2.5  # When to destroy all enemies during powerup
-# Health constants
+
+# Health constant
 PLAYER_MAX_HEALTH = 3
-# Imported for GameState
+
+#Imported for GameState
 from enum import Enum
 # Game state enumeration for managing different screens
 class GameState(Enum):
@@ -47,7 +51,7 @@ class Player:
         """
         Initialize player with sprite sheet animation
         """
-        # Load the full sprite sheet image (I couldn't find a way in the documentation to automatically split sprite sheets)
+        # Load the full sprite sheet image (I couldn't find a way in the documentation to automatically split sprite sheets, so if you go to enemies class you can see the for loop i used to cut them up)
         from PIL import Image
         
         #Extract individual frames from the sprite sheet manually
@@ -55,6 +59,7 @@ class Player:
         self.jumping_textures = []
         sprite_image = Image.open(sprite_sheet_path)
         
+        #adds the frames to the textures list
         for i in range(num_frames):
             temp_path = f"CA_{i}.png"
             texture = arcade.load_texture(temp_path)
@@ -62,19 +67,20 @@ class Player:
         
         sprite_image.close()
 
+        #rotating through the textures
         for i in range(jump_frames):
             temp_path = f"CJ_{i}.png"  # Adjust filename to match your jump sprite files
             texture = arcade.load_texture(temp_path)
             self.jumping_textures.append(texture)
         
-        # Create the sprite with the first (idle) texture
+        # create the sprite with the first
         self.player_sprite = arcade.Sprite()
         self.player_sprite.texture = self.textures[0]
         self.player_sprite.center_x = x
         self.player_sprite.center_y = y
         self.player_sprite.scale = 1.6
         
-        # Animation state
+        #animation state
         self.is_jumping = False
         self.is_powering = False
         self.is_attacking = False
@@ -93,14 +99,16 @@ class Player:
         # Movement
         self.change_y = 0
         self.change_x = 0
-    
+
+    #Start the firing animation
     def start_attack(self):
         """Start the attack animation, only start if not already attacking"""
         if not self.is_attacking:
             self.is_attacking = True
             self.current_frame = 0
             self.animation_timer = 0
-    
+        
+    #Jumping motion, to be called in powerup    
     def start_jump(self):
         """Start the jump animation, only start if not already jumping"""
         if not self.is_jumping:
@@ -111,6 +119,7 @@ class Player:
             self.jump_state = JumpState.MOVING_TO_POSITION
             self.original_y = self.player_sprite.center_y
     
+    #Start the power
     def start_power(self):
         """Start the powerup animation"""
         if not self.is_powering:
@@ -120,6 +129,7 @@ class Player:
             self.powerup_elapsed = 0  # Reset elapsed time
             self.enemies_destroyed = False  # Reset destruction flag
     
+    #update player
     def update(self, delta_time=0):
         """Update player position and animation"""
         # Update powerup elapsed time
@@ -138,13 +148,13 @@ class Player:
                 self.hold_timer = HOLD_AT_POSITION_DURATION
         
         elif self.jump_state == JumpState.HOLDING_AT_POSITION:
-            # Stay at position for duration
+            #stay at position for duration
             self.hold_timer -= delta_time
             if self.hold_timer <= 0:
                 self.jump_state = JumpState.RETURNING_TO_ORIGINAL
         
         elif self.jump_state == JumpState.RETURNING_TO_ORIGINAL:
-            # Move back to original position
+            #Move back to original position
             if self.player_sprite.center_y > self.original_y:
                 self.player_sprite.center_y -= JUMPING_SPEED
                 
@@ -156,15 +166,15 @@ class Player:
                     self.is_jumping = False
                     self.jump_animation_complete = False
         
-        # Normal horizontal movement (only when not in jump movement)
+        # Normal horizontal movement
         if self.jump_state == JumpState.NOT_JUMPING:
             self.player_sprite.center_y += self.change_y
             self.player_sprite.center_x += self.change_x
         else:
-            # Only allow horizontal movement during jump
+            #Only allow horizontal movement during jump
             self.player_sprite.center_x += self.change_x
         
-        # Keep player within screen bounds (horizontal only during jump)
+        # Keep player within screen bounds
         if self.jump_state == JumpState.NOT_JUMPING:
             if self.player_sprite.center_y < self.player_sprite.height // 2 + 50:
                 self.player_sprite.center_y = self.player_sprite.height // 2 + 50
@@ -176,16 +186,16 @@ class Player:
         elif self.player_sprite.center_x > SCREEN_WIDTH - self.player_sprite.width // 2:
             self.player_sprite.center_x = SCREEN_WIDTH - self.player_sprite.width // 2
         
-        # Update animation
+        #Update animation
         if self.is_attacking and not self.is_powering:
             self.animation_timer += delta_time
             
-            # Check if it's time to advance to the next frame
+            #check if it's time to advance to the next frame
             if self.animation_timer >= ATTACK_ANIMATION_SPEED:
                 self.animation_timer = 0
                 self.current_frame += 1
                 
-                # Check if animation is complete
+                #finish animation for attack
                 if self.current_frame >= len(self.textures):
                     self.is_attacking = False
                     self.current_frame = 0
@@ -216,6 +226,7 @@ class Player:
             # Return to idle (first frame)
             self.player_sprite.texture = self.textures[0]
 
+#Enemy drone class
 class Enemy:
     """Enemy drone class that randomly selects from available drone types with animation"""
     
@@ -231,7 +242,8 @@ class Enemy:
         # Load animation frames for this enemy type
         self.textures = []
         num_frames = 4
-        
+
+        #This is the loop i used to cut up the sprites, I deleted it from the other classes after all of them are properly generated, but I left it here
         
         for i in range(num_frames):
             sprite_image = Image.open(f"Enemy_Drone_{drone_number}.png")
@@ -245,8 +257,7 @@ class Enemy:
             # Crop the frame from the sprite sheet
             frame = sprite_image.crop((left, upper, right, lower))
             
-            # Save to a temporary location and load as texture
-            #This is my current solution, not sure if there's a better way
+            #save to temporary location and load as texture
             temp_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
             frame.save(temp_path)
             frame_path = f"Enemy_Drone_{drone_number}_frame_{i}.png"
@@ -270,6 +281,7 @@ class Enemy:
         self.animation_timer = 0
         self.animation_speed = 0.1  # Time per frame in seconds (adjust for faster/slower animation)
     
+
     def update(self, delta_time=0):
         """Update enemy position and animation"""
         # Update position
@@ -285,6 +297,7 @@ class Enemy:
             self.current_frame = (self.current_frame + 1) % len(self.textures)
             self.enemy_sprite.texture = self.textures[self.current_frame]
 
+#Bullet class ~
 class Bullet(arcade.Sprite):
     """Bullet sprite fired by the player"""
     
@@ -298,6 +311,7 @@ class Bullet(arcade.Sprite):
         """Move the bullet to the left (negative x direction)"""
         self.center_x -= self.speed
 
+#This is background
 class Background(arcade.Sprite):
     """Scrolling background sprite"""
     
@@ -310,13 +324,11 @@ class Background(arcade.Sprite):
         """Scroll the background to the left"""
         self.center_x -= BACKGROUND_SCROLL_SPEED
 
+#Explosion, i realize now that I could have just replaced the destroyed enemies with the image but this works too
 class Explosion:
     """Explosion effect that displays briefly and then disappears"""
     
     def __init__(self, x, y):
-        """
-        Initialize explosion at given position
-        """
         self.explosion_sprite = arcade.Sprite("EXPLOSION.png", scale=0.4)
         self.explosion_sprite.center_x = x
         self.explosion_sprite.center_y = y
@@ -329,6 +341,7 @@ class Explosion:
         if self.timer <= 0:
             self.finished = True
 
+#The main gamewindow
 class GameWindow(arcade.Window):
     """Main game window"""
     
@@ -385,8 +398,7 @@ class GameWindow(arcade.Window):
         
         # Create sprite lists
         self.player_list = arcade.SpriteList()
-
-
+        self.bullet_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
         self.player_list = arcade.SpriteList()
         self.enemy_objects = []
@@ -412,9 +424,10 @@ class GameWindow(arcade.Window):
             num_frames=6,
             jump_frames=6
         )
+
         self.player_list.append(self.player.player_sprite)
         
-        # Create friend drone that follows the player (at y - 50)
+        #Create friend drone that carries the player around
         self.friend = Player.__new__(Player)  # Create instance without __init__
         self.friend.player_texture = arcade.load_texture("Friendly_Drone.png")
         self.friend.player_sprite = arcade.Sprite(self.friend.player_texture, scale=1.6)
@@ -425,6 +438,7 @@ class GameWindow(arcade.Window):
         self.friend.jump_state = JumpState.NOT_JUMPING
         self.friend.hold_timer = 0
         self.friend.original_y = PLAYER_INITIAL_Y - 50
+
         # Add simple update method for friend
         self.friend.update = lambda dt: self._friend_update(dt)
         self.player_list.append(self.friend.player_sprite)
@@ -434,18 +448,18 @@ class GameWindow(arcade.Window):
         arcade.schedule(self.spawn_enemy, spawn_cooldown)
     
     def _friend_update(self, delta_time=0):
-        """Simple update for friend drone - mirrors player jump movement but goes down"""
         # Handle jump movement states (opposite direction of player)
         if self.friend.jump_state == JumpState.MOVING_TO_POSITION:
             # Move downward (opposite of player)
             self.friend.player_sprite.center_y -= JUMPING_SPEED
             
-            # Check if reached bottom of screen
+            # check if reached bottom of screen
             if self.friend.player_sprite.center_y <= self.friend.player_sprite.height // 2:
                 self.friend.player_sprite.center_y = self.friend.player_sprite.height // 2
                 self.friend.jump_state = JumpState.HOLDING_AT_POSITION
                 self.friend.hold_timer = HOLD_AT_POSITION_DURATION
         
+        #At the very tippy top :>
         elif self.friend.jump_state == JumpState.HOLDING_AT_POSITION:
             # Stay at position for duration
             self.friend.hold_timer -= delta_time
@@ -453,7 +467,7 @@ class GameWindow(arcade.Window):
                 self.friend.jump_state = JumpState.RETURNING_TO_ORIGINAL
         
         elif self.friend.jump_state == JumpState.RETURNING_TO_ORIGINAL:
-            # Move back to original position
+            #Move back to original position
             if self.friend.player_sprite.center_y < self.friend.original_y:
                 self.friend.player_sprite.center_y += JUMPING_SPEED
                 
@@ -462,14 +476,14 @@ class GameWindow(arcade.Window):
                     self.friend.player_sprite.center_y = self.friend.original_y
                     self.friend.jump_state = JumpState.NOT_JUMPING
         
-        # Normal movement when not jumping
+        #Normal movement when not jumping
         if self.friend.jump_state == JumpState.NOT_JUMPING:
             self.friend.player_sprite.center_y += self.friend.change_y
         
         # Always follow player's x position
         self.friend.player_sprite.center_x = self.player.player_sprite.center_x
         
-        # Keep within bounds
+        #keep within bounds
         if self.friend.jump_state == JumpState.NOT_JUMPING:
             if self.friend.player_sprite.center_y < self.friend.player_sprite.height // 2:
                 self.friend.player_sprite.center_y = self.friend.player_sprite.height // 2
@@ -479,15 +493,16 @@ class GameWindow(arcade.Window):
     def spawn_enemy(self, delta_time):
         """Spawn a new enemy at a random height"""
         if self.current_state == GameState.PLAYING:
-            # Generate random y position in increments of 30 from 100 to 670
+            #random y position in increments of 30 from 100 to 670
             possible_heights = list(range(100, 671, 30))
             y_position = random.choice(possible_heights)
         
-            # Create enemy at x = -30, moving right
+            # Create enemy at x = -30, moving right so that it looks smooth
             enemy = Enemy(-30, y_position, speed=1)
             self.enemy_list.append(enemy.enemy_sprite)  # Add sprite to sprite list
             self.enemy_objects.append(enemy)  # Add Enemy object to tracking list
     
+    #adding bullet
     def shoot_bullet(self):
         """Create and fire a bullet from the player's position"""
         bullet = Bullet(
@@ -498,8 +513,9 @@ class GameWindow(arcade.Window):
         )
         self.bullet_list.append(bullet)
     
+
     def create_explosion(self, x, y):
-        """Create an explosion effect at the given position"""
+        """Create an explosion effect at the given position (the position of the dead robot)"""
         explosion = Explosion(x, y)
         self.explosion_list.append(explosion.explosion_sprite)
         self.explosion_objects.append(explosion)
@@ -516,15 +532,16 @@ class GameWindow(arcade.Window):
         self.start_logo_sprite.center_y = SCREEN_HEIGHT / 2 - 10
         arcade.draw_sprite(self.start_logo_sprite)
     
+    #last screen
     def draw_game_over(self):
         """Draw the game over screen with frozen game state"""
-        # Draw the frozen game state
+        # Draw the frozen game state, stops moving/updating
         self.background_list.draw()
         self.enemy_list.draw()
         self.bullet_list.draw()
         self.player_list.draw()
         
-        # Draw semi-transparent overlay
+        #Draw transparent overlay
         arcade.draw_lbwh_rectangle_filled(
             0, 0,
             SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -536,6 +553,7 @@ class GameWindow(arcade.Window):
         self.end_screen_sprite.center_x = SCREEN_WIDTH / 2
         self.end_screen_sprite.center_y = SCREEN_HEIGHT / 2 - 10
         arcade.draw_sprite(self.end_screen_sprite)
+    
         arcade.draw_text(
             score_text := f"{self.score}",
             SCREEN_WIDTH / 2 + 20,
@@ -544,7 +562,7 @@ class GameWindow(arcade.Window):
             font_size=30,
             anchor_x="center"
         )
-    
+    #the vertical yellowish line
     def draw_powerup_line(self):
         """Draw a yellow line between player and friend drone during powerup"""
         if self.player.is_powering:
@@ -553,7 +571,7 @@ class GameWindow(arcade.Window):
             player_y = self.player.player_sprite.center_y
             friend_y = self.friend.player_sprite.center_y
             
-            # Draw a thin yellow line
+            #draw a thin yellow line
             arcade.draw_line(
                 player_x+8, player_y,
                 player_x+8, friend_y,
@@ -575,7 +593,7 @@ class GameWindow(arcade.Window):
             self.draw_start_screen()
         
         elif self.current_state == GameState.PLAYING:
-            # Draw backgrounds first (so they're behind the player)
+            # Draw backgrounds first so they're behind the player, :(
             self.background_list.draw()
 
             # Draw enemies
@@ -587,7 +605,7 @@ class GameWindow(arcade.Window):
             # Draw explosions
             self.explosion_list.draw()
             
-            # Draw powerup line BEFORE drawing player (so it's behind the sprites)
+            # Draw powerup line BEFORE drawing player
             self.draw_powerup_line()
             
             # Draw player
@@ -620,19 +638,21 @@ class GameWindow(arcade.Window):
             200, 20,
             arcade.color.BLACK
             )
-            
+                        
             arcade.draw_lbwh_rectangle_filled(
             32, SCREEN_HEIGHT - 96,
             192, 12,
             arcade.color.GREEN
             )
-
+            #shrink black transparent cooldown
             cooldown_proportion = (self.power_cooldown)/self.power_cooldown_time
             arcade.draw_lbwh_rectangle_filled(
             32, SCREEN_HEIGHT - 96,
             192*cooldown_proportion, 12,
             (0,0,0,150)
             )
+        
+        #game over
         elif self.current_state == GameState.GAME_OVER:
             self.draw_game_over()
     
@@ -645,12 +665,12 @@ class GameWindow(arcade.Window):
             
             # Position it below the score (adjust these values as needed)
             heart_bar_sprite.left = 8
-            heart_bar_sprite.bottom = SCREEN_HEIGHT - 70  # Below the score
+            heart_bar_sprite.bottom = SCREEN_HEIGHT - 70  # Right Below the score
             
             arcade.draw_sprite(heart_bar_sprite)
     
     def on_update(self, delta_time):
-        """Update game logic"""
+        """Update game"""
         # Update background scrolling on start screen and during gameplay
         if self.current_state in [GameState.START_SCREEN, GameState.PLAYING]:
             self.background_list.update()
@@ -685,6 +705,7 @@ class GameWindow(arcade.Window):
                         enemy.enemy_sprite.center_x,
                         enemy.enemy_sprite.center_y
                     )
+                    #remove the enemy
                     enemy.enemy_sprite.remove_from_sprite_lists()
                     self.enemy_objects.remove(enemy)
                     self.score += 10  # Award points for each destroyed enemy
@@ -709,7 +730,7 @@ class GameWindow(arcade.Window):
                     bullet.remove_from_sprite_lists()
             
             # Update enemies
-            for enemy in self.enemy_objects:  # Changed from self.enemy_list
+            for enemy in self.enemy_objects: 
                 enemy.update(delta_time)
             # Remove enemies that are off-screen
             for enemy in self.enemy_objects[:]:  # Create a copy to iterate over
@@ -779,8 +800,9 @@ class GameWindow(arcade.Window):
             if key == arcade.key.SPACE:
                 self.current_state = GameState.PLAYING
                 self.setup()
-        
+        #playing :>
         elif self.current_state == GameState.PLAYING:
+            #moves in direction
             if key == arcade.key.UP or key == arcade.key.W:
                 if self.player.jump_state == JumpState.NOT_JUMPING:
                     self.player.change_y = PLAYER_MOVEMENT_SPEED
@@ -795,23 +817,23 @@ class GameWindow(arcade.Window):
             elif key == arcade.key.RIGHT or key == arcade.key.D:
                 self.player.change_x = PLAYER_HORIZONTAL_SPEED
                 self.friend.change_x = PLAYER_HORIZONTAL_SPEED
+            #shoot
             elif key == arcade.key.SPACE:
                 # Only shoot if cooldown has expired and not powering up
                 if self.bullet_cooldown <= 0 and not self.player.is_powering:
                     # Trigger attack animation and shoot bullet
                     self.player.start_attack()
                     self.shoot_bullet()
-                    # Reset cooldown
                     self.bullet_cooldown = self.bullet_cooldown_time
+            #powerup
             elif key == arcade.key.E:
-                # Only activate powerup if cooldown has expired
                 if self.power_cooldown <= 0:
                     # Trigger power animation and sync friend's jump state
                     self.player.start_power()
                     self.friend.jump_state = JumpState.MOVING_TO_POSITION
                     self.friend.original_y = self.friend.player_sprite.center_y
                     self.power_cooldown = self.power_cooldown_time
-        
+        #start game when its not started
         elif self.current_state == GameState.GAME_OVER:
             if key == arcade.key.SPACE:
                 self.current_state = GameState.PLAYING
@@ -826,12 +848,12 @@ class GameWindow(arcade.Window):
             elif key in (arcade.key.LEFT, arcade.key.A, arcade.key.RIGHT, arcade.key.D):
                 self.player.change_x = 0
                 self.friend.change_x = 0
-
+#Main function
 def main():
     """Main function"""
     window = GameWindow()
     window.setup()
     arcade.run()
-
+#run main
 if __name__ == "__main__":
     main()
