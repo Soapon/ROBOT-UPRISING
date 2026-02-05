@@ -529,7 +529,7 @@ class GameWindow(arcade.Window):
         self.start_logo_texture = arcade.load_texture("START_LOGO.png")
         self.start_logo_sprite = arcade.Sprite(self.start_logo_texture)
         self.start_logo_sprite.center_x = SCREEN_WIDTH / 2
-        self.start_logo_sprite.center_y = SCREEN_HEIGHT / 2 - 10
+        self.start_logo_sprite.center_y = SCREEN_HEIGHT / 2 + 10
         arcade.draw_sprite(self.start_logo_sprite)
     
     #last screen
@@ -730,7 +730,7 @@ class GameWindow(arcade.Window):
                     bullet.remove_from_sprite_lists()
             
             # Update enemies
-            for enemy in self.enemy_objects: 
+            for enemy in self.enemy_objects:  # Changed from self.enemy_list
                 enemy.update(delta_time)
             # Remove enemies that are off-screen
             for enemy in self.enemy_objects[:]:  # Create a copy to iterate over
